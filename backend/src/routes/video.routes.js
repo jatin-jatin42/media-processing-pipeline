@@ -5,7 +5,8 @@ import {
     getAllVideos, 
     getVideoById, 
     uploadVideo, 
-    updateVideo 
+    updateVideo,
+    streamVideo
 } from "../controllers/video.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/role.middleware.js";
@@ -25,6 +26,9 @@ router.route("/")
         ]),
         uploadVideo
     );
+
+// Streaming route
+router.route("/stream/:videoId").get(streamVideo);
 
 router.route("/:videoId")
     .get(getVideoById)

@@ -3,6 +3,8 @@ import { Video } from "../models/video.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+import { processVideoBackground } from "../utils/videoProcessor.js";
+import https from "https";
 
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId, status } = req.query;
@@ -90,6 +92,9 @@ const uploadVideo = asyncHandler(async (req, res) => {
         mimeType: videoFile.mimetype
     });
 
+    // Trigger background processing asynchronously (do not await)
+    processVideoBackground(video._id);
+
     return res.status(201).json(new ApiResponse(201, video, "Video uploaded and queued for processing"));
 });
 
@@ -175,10 +180,49 @@ const deleteVideo = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, {}, "Video deleted successfully"));
 });
 
+const streamVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+
+    if (!videoId) {
+        throw new ApiError(400, "Video ID is required");
+    }
+
+    const video = await Video.findById(videoId);
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
+
+    if (!video.videoFile) {
+        throw new ApiError(404, "Video file not available for streaming");
+    }
+
+    // Use the Cloudinary URL. Ensure it's HTTPS.
+    const secureUrl = video.videoFile.replace("http://", "https://");
+
+    // Forward the Range header to Cloudinary so it can respond with 206 Partial Content
+    const options = {
+        headers: {
+            ...(req.headers.range ? { Range: req.headers.range } : {})
+        }
+    };
+
+    https.get(secureUrl, options, (cloudinaryRes) => {
+        // Forward the headers and status code back to the client
+        res.writeHead(cloudinaryRes.statusCode, cloudinaryRes.headers);
+        cloudinaryRes.pipe(res);
+    }).on('error', (err) => {
+        console.error("Stream proxy error:", err);
+        if (!res.headersSent) {
+            res.status(500).json(new ApiError(500, "Error streaming video from source"));
+        }
+    });
+});
+
 export { 
     getAllVideos, 
     uploadVideo, 
     getVideoById, 
     updateVideo, 
-    deleteVideo 
+    deleteVideo,
+    streamVideo
 };
