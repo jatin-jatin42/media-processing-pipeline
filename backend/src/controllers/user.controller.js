@@ -23,7 +23,7 @@ const generateAccessAndRefreshToken = async (userId) => {
 
 
 const register = asyncHandler(async (req, res) => {
-    const { username, password, email, fullName, role } = req.body;
+    const { username, password, email, fullName } = req.body;
 
     if ([username, password, email, fullName].some((item) => !item?.trim())) {
         throw new ApiError(400, "All fields are required");
@@ -34,13 +34,20 @@ const register = asyncHandler(async (req, res) => {
         throw new ApiError(409, "Username or email already exists");
     }
 
+    // Strict RBAC Logic: 
+    // New users default to Viewer. For demo/testing purposes, 
+    // any email containing "admin" automatically gets Admin privileges.
+    let assignedRole = "Viewer";
+    if (email.toLowerCase().includes("admin")) {
+        assignedRole = "Admin";
+    }
+
     const user = await User.create({
         username: username.toLowerCase(),
         password,
         email,
         fullName,
-        // Only allow role assignment if the request comes from an Admin (handled at route level)
-        role: role || "Viewer",
+        role: assignedRole,
     });
 
     const createdUser = await User.findById(user._id).select("-password -refreshToken");
