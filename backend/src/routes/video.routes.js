@@ -1,0 +1,41 @@
+import { Router } from "express";
+import { upload } from "../middlewares/multer.middleware.js";
+import { 
+    deleteVideo, 
+    getAllVideos, 
+    getVideoById, 
+    uploadVideo, 
+    updateVideo 
+} from "../controllers/video.controller.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { authorizeRoles } from "../middlewares/role.middleware.js";
+
+const router = Router();
+
+// All video routes require authentication
+router.use(verifyJWT);
+
+router.route("/")
+    .get(getAllVideos)
+    .post(
+        authorizeRoles("Editor", "Admin"),
+        upload.fields([
+            { name: "thumbnail", maxCount: 1 },
+            { name: "videoFile", maxCount: 1 }
+        ]),
+        uploadVideo
+    );
+
+router.route("/:videoId")
+    .get(getVideoById)
+    .patch(
+        authorizeRoles("Editor", "Admin"),
+        upload.single("thumbnail"),
+        updateVideo
+    )
+    .delete(
+        authorizeRoles("Editor", "Admin"),
+        deleteVideo
+    );
+
+export default router;

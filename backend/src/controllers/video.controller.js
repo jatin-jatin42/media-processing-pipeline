@@ -1,0 +1,159 @@
+import asyncHandler from "../utils/asyncHandler.js";
+import { Video } from "../models/video.model.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
+
+const getAllVideos = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 10, query, sortBy, sortType, userId, status } = req.query;
+
+    let sortCriteria = {};
+    let videoQuery = {};
+
+    if (userId) {
+        videoQuery.owner = userId;
+    }
+
+    if (status) {
+        videoQuery.status = status;
+    }
+
+    if (query) {
+        videoQuery.$or = [
+            { title: { $regex: query, $options: 'i' } },
+            { description: { $regex: query, $options: 'i' } }
+        ];
+    }
+    
+    if (sortBy && sortType) {
+        sortCriteria[sortBy] = sortType === "desc" ? -1 : 1;
+    } else {
+        sortCriteria["createdAt"] = -1;
+    }
+    
+    const videos = await Video.find(videoQuery)
+        .sort(sortCriteria)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate("owner", "username fullName avatar");
+    
+    const total = await Video.countDocuments(videoQuery);
+    
+    return res.status(200).json(new ApiResponse(200, {
+        videos,
+        pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total
+        }
+    }, "Videos fetched successfully"));
+});
+
+const uploadVideo = asyncHandler(async (req, res) => {
+    const { title, description } = req.body;
+    
+    const videoFile = req.files?.videoFile?.[0];
+    const thumbnailFile = req.files?.thumbnail?.[0];
+
+    if (!title) {
+        throw new ApiError(400, "Title is required");
+    }
+    
+    if (!videoFile) {
+        throw new ApiError(400, "Video file is required");
+    }
+
+    // In a real pipeline, we would trigger an asynchronous processing task here (e.g., using Bull or similar)
+    // For now, we just create the record with 'pending' status.
+    const video = await Video.create({
+        title,
+        description: description || "",
+        videoFile: `/uploads/${videoFile.filename}`,
+        thumbnail: thumbnailFile ? `/uploads/${thumbnailFile.filename}` : "",
+        status: "pending",
+        owner: req.user._id,
+        fileSize: videoFile.size,
+        mimeType: videoFile.mimetype
+    });
+
+    return res.status(201).json(new ApiResponse(201, video, "Video uploaded and queued for processing"));
+});
+
+const getVideoById = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+
+    if (!videoId) {
+        throw new ApiError(400, "Video ID is required");
+    }
+
+    const video = await Video.findById(videoId).populate("owner", "username fullName avatar");
+    
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
+
+    return res.status(200).json(new ApiResponse(200, video, "Video fetched successfully"));
+});
+
+const updateVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+    const { title, description, status } = req.body;
+
+    if (!videoId) {
+        throw new ApiError(400, "Video ID is required");
+    }
+
+    const video = await Video.findById(videoId);
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
+
+    // Check ownership
+    if (video.owner.toString() !== req.user._id.toString() && req.user.role !== "Admin") {
+        throw new ApiError(403, "You do not have permission to update this video");
+    }
+
+    if (title) video.title = title;
+    if (description) video.description = description;
+    if (status && ["pending", "processing", "safe", "flagged"].includes(status)) {
+        video.status = status;
+    }
+
+    if (req.file) {
+        video.thumbnail = `/uploads/${req.file.filename}`;
+    }
+
+    await video.save();
+
+    return res.status(200).json(new ApiResponse(200, video, "Video updated successfully"));
+});
+
+const deleteVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+
+    if (!videoId) {
+        throw new ApiError(400, "Video ID is required");
+    }
+
+    const video = await Video.findById(videoId);
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
+
+    // Check ownership
+    if (video.owner.toString() !== req.user._id.toString() && req.user.role !== "Admin") {
+        throw new ApiError(403, "You do not have permission to delete this video");
+    }
+
+    await Video.findByIdAndDelete(videoId);
+    // Note: In a real app, we should also delete the files from storage here.
+
+    return res.status(200).json(new ApiResponse(200, {}, "Video deleted successfully"));
+});
+
+export { 
+    getAllVideos, 
+    uploadVideo, 
+    getVideoById, 
+    updateVideo, 
+    deleteVideo 
+};
