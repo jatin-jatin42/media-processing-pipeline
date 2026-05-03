@@ -18,21 +18,21 @@ dotenv.config();
 const DEMO_USERS = [
     {
         username: "admin",
-        email: "admin@mediapipeline.com",
+        email: "admin@streamit.com",
         password: "Admin@1234",
         fullName: "Platform Admin",
         role: "Admin"
     },
     {
         username: "editor_demo",
-        email: "editor@demo.com",
+        email: "editor@streamit.com",
         password: "Editor@1234",
         fullName: "Demo Editor",
         role: "Editor"
     },
     {
         username: "viewer_demo",
-        email: "viewer@demo.com",
+        email: "viewer@streamit.com",
         password: "Viewer@1234",
         fullName: "Demo Viewer",
         role: "Viewer"

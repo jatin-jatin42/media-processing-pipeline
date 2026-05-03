@@ -17,7 +17,7 @@ export default function Navbar() {
       <div className="container mx-auto px-4 max-w-6xl h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 text-indigo-600 font-bold text-xl tracking-tight">
           <Video className="w-6 h-6" />
-          <span>MediaPipeline</span>
+          <span>Streamit</span>
         </Link>
         
         {user && (

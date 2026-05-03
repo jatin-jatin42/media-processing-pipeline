@@ -10,8 +10,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const DEMO_ACCOUNTS = [
-    { role: "Editor", email: "editor@demo.com",          password: "Editor@1234", color: "bg-blue-50 text-blue-700 border-blue-200" },
-    { role: "Viewer", email: "viewer@demo.com",          password: "Viewer@1234", color: "bg-green-50 text-green-700 border-green-200" },
+    { role: "Editor", email: "editor@streamit.com",          password: "Editor@1234", color: "bg-blue-50 text-blue-700 border-blue-200" },
+    { role: "Viewer", email: "viewer@streamit.com",          password: "Viewer@1234", color: "bg-green-50 text-green-700 border-green-200" },
   ];
 
   const fillDemo = (account) => {

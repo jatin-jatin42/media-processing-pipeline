@@ -78,12 +78,18 @@ const uploadVideo = asyncHandler(async (req, res) => {
         }
     }
 
-    // In a real pipeline, we would trigger an asynchronous processing task here (e.g., using Bull or similar)
-    // For now, we just create the record with 'pending' status.
+    console.log("Cloudinary Video Response:", videoUploadResponse);
+
+    const videoUrl = videoUploadResponse.secure_url || videoUploadResponse.url;
+
+    if (!videoUrl) {
+        throw new ApiError(500, "Cloudinary upload succeeded but no URL was returned. Check backend logs.");
+    }
+
     const video = await Video.create({
         title,
         description: description || "",
-        videoFile: videoUploadResponse.url,
+        videoFile: videoUrl,
         thumbnail: thumbnailUrl,
         status: "pending",
         owner: req.user._id,
@@ -141,11 +147,10 @@ const updateVideo = asyncHandler(async (req, res) => {
     if (req.file) {
         const thumbnailUploadResponse = await uploadOnCloudinary(req.file.path, "image");
         if (thumbnailUploadResponse) {
-            // Optionally delete old thumbnail from Cloudinary here
             if (video.thumbnail) {
                 await deleteFromCloudinary(video.thumbnail);
             }
-            video.thumbnail = thumbnailUploadResponse.url;
+            video.thumbnail = thumbnailUploadResponse.secure_url || thumbnailUploadResponse.url;
         }
     }
 

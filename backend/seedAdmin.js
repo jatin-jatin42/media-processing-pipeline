@@ -18,7 +18,7 @@ dotenv.config();
 
 const ADMIN_CREDENTIALS = {
     username: "admin",
-    email: "admin@mediapipeline.com",
+    email: "admin@streamit.com",
     password: "Admin@1234",
     fullName: "Platform Admin",
     role: "Admin"

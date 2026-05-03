@@ -62,15 +62,28 @@ const login = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Password is required");
     }
 
-    // Bug fix: original query had `{ $or: [{ username }, { password }] }` — searching by password field
-    const user = await User.findOne({ $or: [{ username }, { email }] });
+    // Build dynamic query to avoid issues with 'undefined' fields in $or
+    const queryConditions = [];
+    if (email) queryConditions.push({ email: email.toLowerCase() });
+    if (username) queryConditions.push({ username: username.toLowerCase() });
+
+    if (queryConditions.length === 0) {
+        throw new ApiError(400, "Username or email is required");
+    }
+
+    console.log("Login Attempt:", { email, username });
+    const user = await User.findOne({ $or: queryConditions });
+    
     if (!user) {
-        throw new ApiError(404, "User does not exist");
+        console.log("Login Failed: User not found");
+        throw new ApiError(404, "User does not exist with these credentials");
     }
 
     const isPasswordValid = await user.isPasswordCorrect(password);
+    console.log("Found User:", user.email, "| Password Match:", isPasswordValid);
+
     if (!isPasswordValid) {
-        throw new ApiError(401, "Invalid credentials");
+        throw new ApiError(401, "Invalid password. Please try again.");
     }
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
