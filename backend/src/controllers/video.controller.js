@@ -2,6 +2,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import { Video } from "../models/video.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId, status } = req.query;
@@ -62,15 +63,29 @@ const uploadVideo = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Video file is required");
     }
 
+    const videoUploadResponse = await uploadOnCloudinary(videoFile.path);
+    if (!videoUploadResponse) {
+        throw new ApiError(500, "Failed to upload video to Cloudinary");
+    }
+
+    let thumbnailUrl = "";
+    if (thumbnailFile) {
+        const thumbnailUploadResponse = await uploadOnCloudinary(thumbnailFile.path);
+        if (thumbnailUploadResponse) {
+            thumbnailUrl = thumbnailUploadResponse.url;
+        }
+    }
+
     // In a real pipeline, we would trigger an asynchronous processing task here (e.g., using Bull or similar)
     // For now, we just create the record with 'pending' status.
     const video = await Video.create({
         title,
         description: description || "",
-        videoFile: `/uploads/${videoFile.filename}`,
-        thumbnail: thumbnailFile ? `/uploads/${thumbnailFile.filename}` : "",
+        videoFile: videoUploadResponse.url,
+        thumbnail: thumbnailUrl,
         status: "pending",
         owner: req.user._id,
+        duration: videoUploadResponse.duration || 0,
         fileSize: videoFile.size,
         mimeType: videoFile.mimetype
     });
@@ -119,7 +134,14 @@ const updateVideo = asyncHandler(async (req, res) => {
     }
 
     if (req.file) {
-        video.thumbnail = `/uploads/${req.file.filename}`;
+        const thumbnailUploadResponse = await uploadOnCloudinary(req.file.path);
+        if (thumbnailUploadResponse) {
+            // Optionally delete old thumbnail from Cloudinary here
+            if (video.thumbnail) {
+                await deleteFromCloudinary(video.thumbnail);
+            }
+            video.thumbnail = thumbnailUploadResponse.url;
+        }
     }
 
     await video.save();
@@ -144,8 +166,11 @@ const deleteVideo = asyncHandler(async (req, res) => {
         throw new ApiError(403, "You do not have permission to delete this video");
     }
 
+    // Delete files from Cloudinary
+    if (video.videoFile) await deleteFromCloudinary(video.videoFile);
+    if (video.thumbnail) await deleteFromCloudinary(video.thumbnail);
+
     await Video.findByIdAndDelete(videoId);
-    // Note: In a real app, we should also delete the files from storage here.
 
     return res.status(200).json(new ApiResponse(200, {}, "Video deleted successfully"));
 });

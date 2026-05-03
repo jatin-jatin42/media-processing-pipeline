@@ -1,129 +1,86 @@
-# VIDTUBE App Backend
+# Media Analysis Pipeline
 
-This is learning project for backend development.
+A comprehensive full-stack application that enables users to upload videos, processes them for content sensitivity analysis, and provides seamless video streaming capabilities with real-time progress tracking.
 
-## Table of Contents
+## 🚀 Project Overview
 
-- [Description](#description)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [Tests](#tests)
-- [License](#license)
-- [Questions](#questions)
+This project is built as an enterprise-grade asynchronous media processing system. It uses a Node.js + Express backend with Socket.io for real-time updates, and a React + Vite frontend for a responsive user experience.
 
-## Description
-This project is a robust backend built with NodeJs, ExpressJS and MongoDB, designed to handle a variety of operations for a social media-like platform. It includes user controllers that manage registration, login, logout, and other user-related functionalities. The video controller allows users to perform CRUD operations on videos. Similarly, users can create, read, update, and delete comments and community post. The like controller enables users to like videos, comments, and community, enhancing user interaction and engagement. Additionally, a dashboard controller provides an overview of user activities and interactions. This backend serves as a solid foundation for a future frontend, paving the way for a full-stack social media application.
+### Key Features
+- **Video Management**: Secure upload and storage system.
+- **Content Analysis**: Automated sensitivity detection (safe/flagged classification).
+- **Real-Time Updates**: Live processing progress tracking via Socket.io.
+- **Streaming Service**: Video playback using HTTP range requests.
+- **Access Control**: Role-Based Access Control (Viewer, Editor, Admin).
 
-## Prerequisites
-
-Before you begin, ensure you have met the following requirements:
-
-- You have installed the latest version of Node.js and npm.
-- You have a Windows/Linux/Mac machine.
-- You have read guide to Express.js.
-- You have a basic understanding of JavaScript and MongoDB.
-- You have MongoDB installed or have a MongoDB Atlas account.
-
-
-## Installation
-
-
-Follow these steps to get the project set up on your local machine:
-
-1. **Clone the repository**: First, you will need to clone the repository to your local machine. You can do this with the following command:
-
-    ```bash
-    git clone https://github.com/Raahuldas/VidTube.git
-    ```
-
-2. **Navigate to the project directory**: Change your current directory to the project's directory:
-
-    ```bash
-    cd Vidtube
-    ```
-
-3. **Install the dependencies**: Now, you can install the necessary dependencies for the project:
-
-    ```bash
-    npm install
-    npm install -g nodemon
-    npm install dotenv cloudinary mongoose mongoose-aggregate-paginate-v2 bcrypt jsonwebtoken express cors cookie-parser cloudinary multer
-
-    ```
-
-4. **Set up environment variables**: Copy the `.env.example` file and rename it to `.env`. Then, fill in the necessary environment variables.
-
-5. **Start the server**: Finally, you can start the server:
-
-    ```bash
-    npm run dev
-    ```
-
-Now, you should be able to access the application at `http://localhost:8000` (or whatever port you specified).
-
-
-## Usage
-
-This project is a backend application, so you'll interact with it using API endpoints. Here are some examples:
-
-**User Registration**
-
-To register a new user, send a POST request to `/api/v1/users/register` with the following data:
-
-```json
-{
-  "username": "example",
-  "email": "example@email.com",
-  "password": "examplepassword",
-  "fullName": "Example User",
-  "avatar": "avatar.jpg",
-  "coverImage": "coverImage.jpg",
-}
-
+## 📁 Project Structure
 
 ```
-
-**User Login**
-
-To login, send a POST request to `/api/v1/users/login` with the following data:
-
-```json
-{
-  "email": "example@email",
-  "password": "examplepassword"
-}
+.
+├── backend/          # Node.js + Express API
+│   ├── src/          # Source code
+│   └── public/       # Local file storage (uploads)
+├── frontend/         # React + Vite application
+│   └── src/          # UI components & logic
+└── requirements.txt  # Project specifications
 ```
 
-**User Logout**
+## 🛠️ Installation & Setup
 
-To logout, send a POST request to `/api/v1/users/logout` .
+### 1. Prerequisites
+- Node.js (Latest LTS)
+- MongoDB Atlas account or local MongoDB instance
 
-There a lot of endpoint you can see in routes.
+### 2. Backend Setup
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Configure environment variables:
+   Copy `.env.sample` to `.env` and fill in your MongoDB URI and JWT secrets.
+4. Start the server:
+   ```bash
+   npm run dev
+   ```
 
+### 3. Frontend Setup
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Configure environment variables:
+   Copy `.env.sample` to `.env`.
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
+## 🧪 API Endpoints
 
+### Authentication
+- `POST /api/v1/users/register` - Register a new user
+- `POST /api/v1/users/login` - Login and receive tokens
+- `POST /api/v1/users/logout` - Logout and clear tokens
 
-## Contributing
-This project is open source and it is based on learning, this project is from "Chai-aur-code" yt channel.
+### Video Operations
+- `GET /api/v1/videos` - List all videos
+- `POST /api/v1/videos` - Upload a new video (Editor/Admin only)
+- `GET /api/v1/videos/:videoId` - Get video details and stream
+- `PATCH /api/v1/videos/:videoId` - Update video metadata
+- `DELETE /api/v1/videos/:videoId` - Remove a video
 
-## Tests
-This project uses Postman for testing its API endpoints. 
-here is a postman collection import in your postman collection and set the environment variables.
-variable : vidtube  initialValue : http://localhost:8000/api/v1/  currentValue : http://localhost:8000/api/v1/
+## 🛡️ Role-Based Access Control (RBAC)
+- **Viewer**: Read-only access to videos.
+- **Editor**: Upload, edit, and manage video content.
+- **Admin**: Full system access.
 
-import this file in postman collection.: https://drive.google.com/file/d/1BNLm9WSyGugKT-66TxpKglWaaOob4Hkz/view?usp=sharing
-
-The tests cover the following areas:
-
-- User registration, login, and logout
-- Video CRUD operations
-- Comment CRUD operations
-- Community CRUD operations
-- Liking videos, comments, and Community
-- Dashboard functionality
-
-Please note that you'll need to update the environment variables in Postman to match your local setup (e.g., `base_url`, `user_token`).
-
-
+## 📝 License
+ISC
