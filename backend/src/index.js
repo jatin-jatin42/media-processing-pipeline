@@ -17,11 +17,7 @@ export const io = new Server(httpServer, {
 });
 
 io.on("connection", (socket) => {
-    console.log(`[Socket.io] Client connected — id: ${socket.id}`);
-
-    socket.on("disconnect", () => {
-        console.log(`[Socket.io] Client disconnected — id: ${socket.id}`);
-    });
+    socket.on("disconnect", () => {});
 });
 
 connectDB()

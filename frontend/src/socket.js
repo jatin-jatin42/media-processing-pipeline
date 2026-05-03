@@ -17,12 +17,8 @@ const socket = io(
   }
 );
 
-socket.on("connect", () => {
-  console.log("[Socket.io] Connected — id:", socket.id);
-});
+socket.on("connect", () => {});
 
-socket.on("disconnect", (reason) => {
-  console.log("[Socket.io] Disconnected:", reason);
-});
+socket.on("disconnect", (reason) => {});
 
 export default socket;

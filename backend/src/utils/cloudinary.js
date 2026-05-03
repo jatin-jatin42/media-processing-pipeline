@@ -24,9 +24,8 @@ const uploadOnCloudinary = async (localFilePath, resourceType = "auto") => {
         api_secret: process.env.CLOUDINARY_API_SECRET
     };
 
-    console.log("Uploading to Cloudinary:", localFilePath, "Type:", resourceType);
-    
     let response;
+    // upload_large returns a 'Chunkable' stream object. 
     if (resourceType === "video") {
         // upload_large returns a 'Chunkable' stream object. 
         // We MUST use a callback to reliably capture the final result as a Promise.
@@ -48,7 +47,7 @@ const uploadOnCloudinary = async (localFilePath, resourceType = "auto") => {
     }
 
     if (response) {
-        console.log("Cloudinary upload successful:", response.secure_url || response.url);
+        // Essential logging can stay or be removed. Removing for maximum hygiene.
     }
 
     try {

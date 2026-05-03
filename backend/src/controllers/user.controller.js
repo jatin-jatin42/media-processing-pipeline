@@ -72,16 +72,13 @@ const login = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Username or email is required");
     }
 
-    console.log("Login Attempt:", { email, username });
     const user = await User.findOne({ $or: queryConditions });
     
     if (!user) {
-        console.log("Login Failed: User not found");
         throw new ApiError(404, "User does not exist with these credentials");
     }
 
     const isPasswordValid = await user.isPasswordCorrect(password);
-    console.log("Found User:", user.email, "| Password Match:", isPasswordValid);
 
     if (!isPasswordValid) {
         throw new ApiError(401, "Invalid password. Please try again.");

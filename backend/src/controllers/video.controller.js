@@ -53,9 +53,6 @@ const processVideoAnalysis = async (videoId, io) => {
                 message: analysisNotes
             });
         }
-        
-        console.log(`[Pipeline] Analysis complete for video ${videoId}: ${finalStatus}`);
-
     } catch (error) {
         console.error(`[Pipeline Error] Analysis failed for video ${videoId}:`, error.message);
     }
