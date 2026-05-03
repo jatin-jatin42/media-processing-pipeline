@@ -8,6 +8,16 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const DEMO_ACCOUNTS = [
+    { role: "Editor", email: "editor@demo.com",          password: "Editor@1234", color: "bg-blue-50 text-blue-700 border-blue-200" },
+    { role: "Viewer", email: "viewer@demo.com",          password: "Viewer@1234", color: "bg-green-50 text-green-700 border-green-200" },
+  ];
+
+  const fillDemo = (account) => {
+    setEmail(account.email);
+    setPassword(account.password);
+  };
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -41,6 +51,24 @@ export default function Login() {
           {error}
         </div>
       )}
+
+      {/* Demo credentials panel — for assignment reviewer */}
+      <div className="mb-5 p-4 bg-gray-50 rounded-xl border border-gray-200">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Demo Accounts — Click to fill</p>
+        <div className="flex flex-col gap-2">
+          {DEMO_ACCOUNTS.map((acc) => (
+            <button
+              key={acc.role}
+              type="button"
+              onClick={() => fillDemo(acc)}
+              className={`w-full text-left px-3 py-2 rounded-lg border text-xs font-medium flex justify-between items-center hover:opacity-80 transition-opacity ${acc.color}`}
+            >
+              <span className="font-bold">{acc.role}</span>
+              <span className="opacity-75">{acc.email}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>

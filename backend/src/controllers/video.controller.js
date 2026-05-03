@@ -65,14 +65,14 @@ const uploadVideo = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Video file is required");
     }
 
-    const videoUploadResponse = await uploadOnCloudinary(videoFile.path);
+    const videoUploadResponse = await uploadOnCloudinary(videoFile.path, "video");
     if (!videoUploadResponse) {
         throw new ApiError(500, "Failed to upload video to Cloudinary");
     }
 
     let thumbnailUrl = "";
     if (thumbnailFile) {
-        const thumbnailUploadResponse = await uploadOnCloudinary(thumbnailFile.path);
+        const thumbnailUploadResponse = await uploadOnCloudinary(thumbnailFile.path, "image");
         if (thumbnailUploadResponse) {
             thumbnailUrl = thumbnailUploadResponse.url;
         }
@@ -139,7 +139,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     }
 
     if (req.file) {
-        const thumbnailUploadResponse = await uploadOnCloudinary(req.file.path);
+        const thumbnailUploadResponse = await uploadOnCloudinary(req.file.path, "image");
         if (thumbnailUploadResponse) {
             // Optionally delete old thumbnail from Cloudinary here
             if (video.thumbnail) {

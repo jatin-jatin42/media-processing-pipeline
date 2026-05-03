@@ -15,9 +15,14 @@ export default function Dashboard() {
 
   const fetchVideos = async () => {
     try {
-      // Fetch user's own videos if needed, or all videos depending on the requirement.
-      // The requirement says "User Isolation: Each user accesses only their own video content"
-      const res = await api.get(`/videos?userId=${user._id}`);
+      // Role-Based Video Access:
+      // Admins and Viewers see ALL videos in the platform.
+      // Editors see only their OWN uploaded videos (User Isolation).
+      const url = user.role === "Editor" 
+        ? `/videos?userId=${user._id}` 
+        : `/videos`;
+        
+      const res = await api.get(url);
       setVideos(res.data.data.videos);
     } catch (err) {
       console.error("Failed to fetch videos", err);

@@ -8,7 +8,8 @@ export default function Register() {
     username: "",
     email: "",
     password: "",
-    fullName: ""
+    fullName: "",
+    role: "Viewer"
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,7 @@ export default function Register() {
     setLoading(true);
     
     try {
-      await register(formData.username, formData.email, formData.password, formData.fullName);
+      await register(formData.username, formData.email, formData.password, formData.fullName, formData.role);
       // Auto login after register
       await login(formData.email, formData.password);
       navigate("/");
@@ -44,10 +45,7 @@ export default function Register() {
           <Video className="w-6 h-6" />
         </div>
       </div>
-      <h2 className="text-2xl font-bold text-center text-gray-900 mb-2">Create an account</h2>
-      <p className="text-center text-sm text-gray-500 mb-8">
-        Tip: Use <b>admin</b> in your email to test Admin features.
-      </p>
+      <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">Create an account</h2>
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm font-medium">
@@ -104,6 +102,19 @@ export default function Register() {
             placeholder="••••••••"
           />
         </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
+          <select 
+            name="role"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
+            value={formData.role}
+            onChange={handleChange}
+          >
+            <option value="Viewer">Viewer (Watch only)</option>
+            <option value="Editor">Editor (Upload & Edit)</option>
+          </select>
+        </div>
+
         <button 
           type="submit" 
           disabled={loading}
