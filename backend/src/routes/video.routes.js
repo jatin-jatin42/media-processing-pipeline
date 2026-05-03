@@ -8,8 +8,9 @@ import {
     updateVideo,
     streamVideo
 } from "../controllers/video.controller.js";
+import { Video } from "../models/video.model.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { authorizeRoles } from "../middlewares/role.middleware.js";
+import { authorizeRoles, authorizeOwnerOrAdmin } from "../middlewares/role.middleware.js";
 
 const router = Router();
 
@@ -34,11 +35,13 @@ router.route("/:videoId")
     .get(getVideoById)
     .patch(
         authorizeRoles("Editor", "Admin"),
+        authorizeOwnerOrAdmin(Video),
         upload.single("thumbnail"),
         updateVideo
     )
     .delete(
         authorizeRoles("Editor", "Admin"),
+        authorizeOwnerOrAdmin(Video),
         deleteVideo
     );
 

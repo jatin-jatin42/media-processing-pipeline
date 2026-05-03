@@ -12,7 +12,16 @@ const getAllVideos = asyncHandler(async (req, res) => {
     let sortCriteria = {};
     let videoQuery = {};
 
-    if (userId) {
+    // Multi-Tenancy: Always filter by the user's tenant
+    videoQuery.tenantId = req.user.tenantId;
+
+    // RBAC / User Isolation: 
+    // - Editors only see their OWN content
+    // - Admins and Viewers see ALL content within the tenant
+    if (req.user.role === "Editor") {
+        videoQuery.owner = req.user._id;
+    } else if (userId) {
+        // Allow Admins/Viewers to filter by a specific user if they want
         videoQuery.owner = userId;
     }
 
@@ -93,6 +102,7 @@ const uploadVideo = asyncHandler(async (req, res) => {
         thumbnail: thumbnailUrl,
         status: "pending",
         owner: req.user._id,
+        tenantId: req.user.tenantId, // Ensure video belongs to user's tenant
         duration: videoUploadResponse.duration || 0,
         fileSize: videoFile.size,
         mimeType: videoFile.mimetype

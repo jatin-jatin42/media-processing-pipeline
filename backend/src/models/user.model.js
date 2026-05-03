@@ -38,6 +38,13 @@ const userSchema = mongoose.Schema(
             enum: ["Viewer", "Editor", "Admin"],
             default: "Viewer"
         },
+        // Multi-Tenancy: grouping users by organization/group
+        tenantId: {
+            type: String,
+            required: true,
+            default: "default-tenant", // Default for existing data
+            index: true
+        },
         refreshToken: {
             type: String
         }

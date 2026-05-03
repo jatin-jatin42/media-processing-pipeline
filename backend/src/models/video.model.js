@@ -57,6 +57,13 @@ const videoSchema = mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true
+        },
+        // Multi-Tenancy: grouping videos by organization/group
+        tenantId: {
+            type: String,
+            required: true,
+            default: "default-tenant",
+            index: true
         }
     },
     { timestamps: true }

@@ -40,6 +40,7 @@ const register = asyncHandler(async (req, res) => {
         email,
         fullName,
         role: role || "Viewer",
+        tenantId: req.body.tenantId || "default-tenant"
     });
 
     const createdUser = await User.findById(user._id).select("-password -refreshToken");

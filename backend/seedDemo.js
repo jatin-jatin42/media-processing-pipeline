@@ -1,41 +1,55 @@
 /**
- * Demo Seed Script
+ * Multi-Tenant Demo Seed Script
  * 
- * Creates all 3 demo accounts (Admin, Editor, Viewer) for testing.
- * Safe to run multiple times — skips existing accounts.
+ * Creates accounts across different tenants to demonstrate:
+ * 1. User Isolation (Editors see only their own)
+ * 2. Tenant Segregation (Users from different orgs don't see each other)
+ * 3. RBAC (Admin/Editor/Viewer permissions)
  * 
  * Usage:
  *   cd backend
  *   node seedDemo.js
  */
 
-import dotenv from "dotenv";
+import "dotenv/config";
 import { User } from "./src/models/user.model.js";
+import { Video } from "./src/models/video.model.js";
 import connectDB from "./src/db/index.js";
 
-dotenv.config();
-
 const DEMO_USERS = [
+    // TENANT: Streamit Org
     {
         username: "admin",
         email: "admin@streamit.com",
         password: "Admin@1234",
         fullName: "Platform Admin",
-        role: "Admin"
+        role: "Admin",
+        tenantId: "streamit-org"
     },
     {
         username: "editor_demo",
         email: "editor@streamit.com",
         password: "Editor@1234",
-        fullName: "Demo Editor",
-        role: "Editor"
+        fullName: "Streamit Editor",
+        role: "Editor",
+        tenantId: "streamit-org"
     },
     {
         username: "viewer_demo",
         email: "viewer@streamit.com",
         password: "Viewer@1234",
-        fullName: "Demo Viewer",
-        role: "Viewer"
+        fullName: "Streamit Viewer",
+        role: "Viewer",
+        tenantId: "streamit-org"
+    },
+    // TENANT: Independent Group (Isolation Test)
+    {
+        username: "other_editor",
+        email: "other@demo.com",
+        password: "Other@1234",
+        fullName: "External Editor",
+        role: "Editor",
+        tenantId: "other-org"
     }
 ];
 
@@ -44,26 +58,25 @@ const seedDemo = async () => {
         console.log("⏳ Connecting to Database...");
         await connectDB();
         
-        console.log("🌱 Seeding demo accounts...\n");
+        console.log("🧹 Clearing existing data for clean demo...");
+        await User.deleteMany({});
+        await Video.deleteMany({});
+
+        console.log("🌱 Seeding Multi-Tenant demo accounts...\n");
 
         for (const userData of DEMO_USERS) {
-            const existing = await User.findOne({ email: userData.email });
-            if (existing) {
-                console.log(`⏭️  Skipped   : ${userData.role} (${userData.email}) — already exists`);
-            } else {
-                await User.create(userData);
-                console.log(`✅ Created   : ${userData.role} (${userData.email})`);
-            }
+            await User.create(userData);
+            console.log(`✅ Created   : [${userData.tenantId}] ${userData.role} — ${userData.email}`);
         }
 
         console.log("\n──────────────────────────────────────────────────");
-        console.log("  Demo Credentials (for testing):");
+        console.log("  Demo Credentials (Multi-Tenant):");
         console.log("──────────────────────────────────────────────────");
         DEMO_USERS.forEach(u => {
-            console.log(`  ${u.role.padEnd(8)}: ${u.email.padEnd(32)} / ${u.password}`);
+            console.log(`  [${u.tenantId.padEnd(12)}] ${u.role.padEnd(7)}: ${u.email.padEnd(25)} / ${u.password}`);
         });
         console.log("──────────────────────────────────────────────────");
-        console.log("⚠️  Change these passwords before deploying to production!\n");
+        console.log("🚀 Multi-Tenant Architecture implementation complete!\n");
         
         process.exit(0);
     } catch (error) {
