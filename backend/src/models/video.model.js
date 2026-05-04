@@ -64,7 +64,13 @@ const videoSchema = mongoose.Schema(
             required: true,
             default: "default-tenant",
             index: true
-        }
+        },
+        assignedTo: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User"
+            }
+        ]
     },
     { timestamps: true }
 )

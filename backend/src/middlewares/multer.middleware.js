@@ -13,15 +13,23 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-    if (file.fieldname === "videoFile" && file.mimetype.startsWith("video/")) {
-        cb(null, true);
-    } else if (file.fieldname === "thumbnail" && file.mimetype.startsWith("image/")) {
-        cb(null, true);
-    } else if (file.mimetype.startsWith("video/") || file.mimetype.startsWith("image/")) {
-        // Fallback for general usage if needed
-        cb(null, true);
+    const allowedVideoTypes = ["video/mp4", "video/webm", "video/quicktime", "video/x-matroska"];
+    const allowedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+
+    if (file.fieldname === "videoFile") {
+        if (allowedVideoTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error("Invalid video format. Supported: MP4, WebM, MOV, MKV."), false);
+        }
+    } else if (file.fieldname === "thumbnail") {
+        if (allowedImageTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error("Invalid image format. Supported: JPG, PNG, WebP."), false);
+        }
     } else {
-        cb(new Error("Invalid file type. Only videos and images are allowed."), false);
+        cb(new Error("Unexpected field name."), false);
     }
 };
 

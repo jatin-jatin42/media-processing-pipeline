@@ -6,7 +6,9 @@ import {
     getVideoById, 
     uploadVideo, 
     updateVideo,
-    streamVideo
+    streamVideo,
+    assignVideo,
+    unassignVideo
 } from "../controllers/video.controller.js";
 import { Video } from "../models/video.model.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
@@ -44,5 +46,15 @@ router.route("/:videoId")
         authorizeOwnerOrAdmin(Video),
         deleteVideo
     );
+
+router.route("/:videoId/assign").post(
+    authorizeRoles("Editor", "Admin"),
+    assignVideo
+);
+
+router.route("/:videoId/unassign").post(
+    authorizeRoles("Editor", "Admin"),
+    unassignVideo
+);
 
 export default router;

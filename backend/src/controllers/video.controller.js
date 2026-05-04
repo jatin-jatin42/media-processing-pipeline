@@ -67,12 +67,17 @@ const getAllVideos = asyncHandler(async (req, res) => {
     let sortCriteria = {};
     let videoQuery = {};
 
-    // STRICT TENANT ISOLATION: Filter by organization
+    // 1. Multi-Tenant Isolation: Always stay within the organization
     videoQuery.tenantId = req.user.tenantId;
 
-    // RBAC Isolation: Editors only see their own videos, Admins/Viewers see everything in the tenant
-    if (req.user.role === "Editor") {
-        videoQuery.owner = req.user._id;
+    // 2. Access Control & User Isolation:
+    // - Non-Admins: Can see their OWN content OR content specifically ASSIGNED to them.
+    // - Admins: See their own by default, but can oversee everything in the tenant if they wish.
+    if (req.user.role !== "Admin") {
+        videoQuery.$or = [
+            { owner: req.user._id },
+            { assignedTo: req.user._id }
+        ];
     } else if (userId) {
         videoQuery.owner = userId;
     }
@@ -251,11 +256,67 @@ const streamVideo = asyncHandler(async (req, res) => {
     });
 });
 
+/**
+ * assignVideo(videoId, userId)
+ * Allows Editors/Admins to grant a Viewer access to a video.
+ */
+const assignVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+    const { userId } = req.body;
+
+    if (!videoId || !userId) {
+        throw new ApiError(400, "Video ID and User ID are required");
+    }
+
+    const video = await Video.findById(videoId);
+    if (!video) throw new ApiError(404, "Video not found");
+
+    // Only Owner or Admin can assign
+    if (video.owner.toString() !== req.user._id.toString() && req.user.role !== "Admin") {
+        throw new ApiError(403, "Only the owner or an admin can assign this video");
+    }
+
+    // Add to assignedTo if not already present
+    if (!video.assignedTo.includes(userId)) {
+        video.assignedTo.push(userId);
+        await video.save();
+    }
+
+    return res.status(200).json(new ApiResponse(200, video, "User assigned to video successfully"));
+});
+
+/**
+ * unassignVideo(videoId, userId)
+ * Allows Editors/Admins to revoke a Viewer's access.
+ */
+const unassignVideo = asyncHandler(async (req, res) => {
+    const { videoId } = req.params;
+    const { userId } = req.body;
+
+    if (!videoId || !userId) {
+        throw new ApiError(400, "Video ID and User ID are required");
+    }
+
+    const video = await Video.findById(videoId);
+    if (!video) throw new ApiError(404, "Video not found");
+
+    if (video.owner.toString() !== req.user._id.toString() && req.user.role !== "Admin") {
+        throw new ApiError(403, "Only the owner or an admin can unassign this video");
+    }
+
+    video.assignedTo = video.assignedTo.filter(id => id.toString() !== userId.toString());
+    await video.save();
+
+    return res.status(200).json(new ApiResponse(200, video, "User access revoked successfully"));
+});
+
 export { 
     getAllVideos, 
     uploadVideo, 
     getVideoById, 
     updateVideo, 
     deleteVideo,
-    streamVideo
+    streamVideo,
+    assignVideo,
+    unassignVideo
 };

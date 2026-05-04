@@ -6,14 +6,19 @@ import socket from "../socket";
 import UploadModal from "../components/UploadModal";
 import { 
   Plus, Play, Clock, AlertTriangle, CheckCircle, 
-  Image as ImageIcon, Loader2, ShieldAlert, ShieldCheck 
+  Image as ImageIcon, Loader2, ShieldAlert, ShieldCheck,
+  Users, LayoutGrid, Trash2, Mail, Shield, Settings,
+  UserPlus, Check, X, Globe, Lock, Cpu
 } from "lucide-react";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [videos, setVideos] = useState([]);
+  const [tenantUsers, setTenantUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("videos"); // "videos", "users", "settings"
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [assigningVideoId, setAssigningVideoId] = useState(null);
 
   const fetchVideos = async () => {
     try {
@@ -21,17 +26,28 @@ export default function Dashboard() {
       setVideos(res.data.data.videos);
     } catch (err) {
       console.error("Failed to fetch videos", err);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchTenantUsers = async () => {
+    if (user.role === "Viewer") return; // Viewers don't manage team
+    try {
+      const res = await api.get("/users/tenant-users");
+      setTenantUsers(res.data.data);
+    } catch (err) {
+      console.error("Failed to fetch tenant users", err);
     }
   };
 
   useEffect(() => {
-    fetchVideos();
+    const init = async () => {
+      setLoading(true);
+      await Promise.all([fetchVideos(), fetchTenantUsers()]);
+      setLoading(false);
+    };
+    init();
 
-    // Step 1: Listen for real-time status updates from the backend pipeline
     const handleStatusUpdate = (data) => {
-      
       setVideos(prevVideos => prevVideos.map(video => 
         video._id === data.videoId 
           ? { ...video, status: data.status, analysisNotes: data.message } 
@@ -40,8 +56,6 @@ export default function Dashboard() {
     };
 
     socket.on("videoStatusUpdate", handleStatusUpdate);
-
-    // Cleanup listeners on unmount to prevent memory leaks
     return () => {
       socket.off("videoStatusUpdate", handleStatusUpdate);
     };
@@ -51,7 +65,25 @@ export default function Dashboard() {
     setVideos(prev => [newVideo, ...prev]);
   };
 
-  // Step 2: Visual Status Badges
+  const handleAssignUser = async (videoId, userId) => {
+    try {
+      await api.post(`/videos/${videoId}/assign`, { userId });
+      setAssigningVideoId(null);
+      fetchVideos(); 
+    } catch (err) {
+      alert("Failed to grant access: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleUnassignUser = async (videoId, userId) => {
+    try {
+      await api.post(`/videos/${videoId}/unassign`, { userId });
+      fetchVideos(); 
+    } catch (err) {
+      alert("Failed to revoke access: " + (err.response?.data?.message || err.message));
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch(status) {
       case "safe":
@@ -84,112 +116,311 @@ export default function Dashboard() {
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
       <Loader2 className="w-10 h-10 animate-spin text-indigo-600 mb-4" />
-      <p className="font-medium">Initializing Dashboard...</p>
+      <p className="font-medium">Initializing Workspace...</p>
     </div>
   );
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Streamit Dashboard</h1>
-          <p className="text-gray-500 mt-1 font-medium">Real-time media analysis & secure delivery pipeline.</p>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Streamit Workspace</h1>
+          <p className="text-gray-500 mt-1 font-medium">Organization: <span className="text-indigo-600 font-bold uppercase tracking-wider">{user.tenantId}</span></p>
         </div>
         
-        {/* Step 3: RBAC UI Enforcement - Viewers cannot upload */}
-        {user.role !== "Viewer" && (
-          <button 
-            onClick={() => setIsUploadModalOpen(true)}
-            className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-indigo-100"
-          >
-            <Plus className="w-5 h-5" />
-            Upload Video
-          </button>
-        )}
-      </div>
+        <div className="flex items-center gap-3">
+          {/* Tabs - Admin Only for Team/Settings oversight */}
+          {user.role === "Admin" && (
+            <div className="flex bg-gray-100 p-1 rounded-xl mr-4">
+              <button 
+                onClick={() => setActiveTab("videos")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'videos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+                Media
+              </button>
+              <button 
+                onClick={() => setActiveTab("users")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'users' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <Users className="w-4 h-4" />
+                Team
+              </button>
+              <button 
+                onClick={() => setActiveTab("settings")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'settings' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <Settings className="w-4 h-4" />
+                Settings
+              </button>
+            </div>
+          )}
 
-      {videos.length === 0 ? (
-        <div className="bg-white rounded-3xl border-2 border-dashed border-gray-200 p-20 text-center">
-          <div className="w-20 h-20 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-400">
-            <ImageIcon className="w-10 h-10" />
-          </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">No videos found</h3>
-          <p className="text-gray-500 mb-8 max-w-sm mx-auto font-medium">
-            Your library is empty. {user.role === 'Viewer' ? 'Content will appear here once editors upload media.' : 'Upload a video to trigger the analysis pipeline.'}
-          </p>
-          {user.role !== "Viewer" && (
+          {user.role !== "Viewer" && activeTab === "videos" && (
             <button 
               onClick={() => setIsUploadModalOpen(true)}
-              className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors"
+              className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-indigo-100"
             >
-              Start by uploading your first video →
+              <Plus className="w-5 h-5" />
+              Upload Video
             </button>
           )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {videos.map(video => (
-            <div key={video._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:translate-y-[-4px] transition-all duration-300 group">
-              <div className="aspect-video bg-gray-900 relative overflow-hidden">
-                {video.thumbnail ? (
-                  <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-slate-900">
-                    <Play className="w-12 h-12 text-slate-700" />
-                  </div>
-                )}
-                
-                <div className="absolute top-4 right-4 z-10">
-                  {getStatusBadge(video.status)}
-                </div>
-                
-                {/* Step 2: Condition Playback & Warning Overlays */}
-                {video.status === "safe" && (
-                  <Link to={`/video/${video._id}`} className="absolute inset-0 bg-indigo-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-[2px]">
-                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-indigo-600 pl-1 shadow-2xl scale-90 group-hover:scale-100 transition-transform">
-                      <Play className="w-8 h-8" fill="currentColor" />
-                    </div>
-                  </Link>
-                )}
+      </div>
 
-                {video.status === "flagged" && (
-                  <div className="absolute inset-0 bg-rose-950/80 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
-                    <ShieldAlert className="w-12 h-12 text-rose-400 mb-3" />
-                    <p className="text-white font-bold text-sm">SECURITY BLOCK</p>
-                    <p className="text-rose-200 text-xs mt-1">This content violates our safety policy.</p>
-                  </div>
-                )}
-
-                {video.status === "processing" && (
-                  <div className="absolute inset-0 bg-slate-900/60 flex flex-col items-center justify-center p-6 text-center backdrop-blur-md">
-                    <Loader2 className="w-10 h-10 text-white animate-spin mb-3" />
-                    <p className="text-white font-bold text-sm tracking-widest">ANALYZING</p>
-                  </div>
-                )}
+      {activeTab === "videos" && (
+        <>
+          {videos.length === 0 ? (
+            <div className="bg-white rounded-3xl border-2 border-dashed border-gray-200 p-20 text-center">
+              <div className="w-20 h-20 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-400">
+                <ImageIcon className="w-10 h-10" />
               </div>
-              
-              <div className="p-6">
-                <h3 className="font-bold text-gray-900 text-lg mb-2 line-clamp-1" title={video.title}>{video.title}</h3>
-                <p className="text-sm text-gray-500 line-clamp-2 mb-6 min-h-[40px] leading-relaxed">{video.description || "No description provided."}</p>
-                
-                <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-indigo-50 rounded-md flex items-center justify-center text-[10px] font-black text-indigo-600">
-                      {video.owner?.username?.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-tighter">{video.owner?.username}</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-gray-300">
-                    {new Date(video.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No videos yet</h3>
+              <p className="text-gray-500 mb-8 max-w-sm mx-auto font-medium">
+                {user.role === 'Viewer' ? 'Assigned media will appear here for read-only access.' : 'Start the pipeline by uploading your first organizational media.'}
+              </p>
+              {user.role !== "Viewer" && (
+                <button onClick={() => setIsUploadModalOpen(true)} className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors">
+                  Upload now →
+                </button>
+              )}
             </div>
-          ))}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {videos.map(video => (
+                <div key={video._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:translate-y-[-4px] transition-all duration-300 group">
+                  <div className="aspect-video bg-gray-900 relative overflow-hidden">
+                    {video.thumbnail ? (
+                      <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-900">
+                        <Play className="w-12 h-12 text-slate-700" />
+                      </div>
+                    )}
+                    
+                    <div className="absolute top-4 right-4 z-10">
+                      {getStatusBadge(video.status)}
+                    </div>
+                    
+                    {video.status === "safe" && (
+                      <Link to={`/video/${video._id}`} className="absolute inset-0 bg-indigo-900/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-[2px]">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-indigo-600 pl-1 shadow-2xl scale-90 group-hover:scale-100 transition-transform">
+                          <Play className="w-8 h-8" fill="currentColor" />
+                        </div>
+                      </Link>
+                    )}
+
+                    {video.status === "flagged" && (
+                      <div className="absolute inset-0 bg-rose-950/80 flex flex-col items-center justify-center p-6 text-center backdrop-blur-sm">
+                        <ShieldAlert className="w-12 h-12 text-rose-400 mb-3" />
+                        <p className="text-white font-bold text-sm">SECURITY BLOCK</p>
+                        <p className="text-rose-200 text-xs mt-1">Blocked by analysis engine.</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-bold text-gray-900 text-lg line-clamp-1" title={video.title}>{video.title}</h3>
+                      {user.role !== "Viewer" && (
+                        <button 
+                          onClick={() => setAssigningVideoId(assigningVideoId === video._id ? null : video._id)}
+                          className={`px-3 py-1.5 flex items-center gap-1.5 rounded-lg transition-all text-xs font-bold ${assigningVideoId === video._id ? 'bg-indigo-600 text-white shadow-md' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                        >
+                          <UserPlus className="w-3.5 h-3.5" />
+                          Assign Access
+                        </button>
+                      )}
+                    </div>
+                    
+                    <p className="text-sm text-gray-500 line-clamp-2 mb-6 min-h-[40px] leading-relaxed">{video.description || "No description provided."}</p>
+                    
+                    {/* Assign Panel */}
+                    {assigningVideoId === video._id && (
+                      <div className="mb-6 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-2">
+                        <p className="text-xs font-black text-indigo-900 uppercase tracking-widest mb-3">Manage Viewer Access</p>
+                        <div className="flex flex-col gap-2">
+                          {tenantUsers.filter(u => u.role === "Viewer").length === 0 ? (
+                            <span className="text-xs text-indigo-400 italic">No available viewers in organization</span>
+                          ) : (
+                            tenantUsers.filter(u => u.role === "Viewer").map(vUser => {
+                              const hasAccess = video.assignedTo?.includes(vUser._id);
+                              return (
+                                <div key={vUser._id} className="flex items-center justify-between bg-white p-2 rounded-lg border border-indigo-50 shadow-sm">
+                                  <span className="text-xs font-bold text-gray-700">@{vUser.username}</span>
+                                  {hasAccess ? (
+                                    <button 
+                                      onClick={() => handleUnassignUser(video._id, vUser._id)}
+                                      className="px-2 py-1 bg-rose-50 text-[10px] font-bold text-rose-600 rounded hover:bg-rose-100 transition-colors"
+                                    >
+                                      Revoke
+                                    </button>
+                                  ) : (
+                                    <button 
+                                      onClick={() => handleAssignUser(video._id, vUser._id)}
+                                      className="px-2 py-1 bg-emerald-50 text-[10px] font-bold text-emerald-600 rounded hover:bg-emerald-100 transition-colors"
+                                    >
+                                      Grant Access
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-indigo-50 rounded-md flex items-center justify-center text-[10px] font-black text-indigo-600">
+                          {video.owner?.username?.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-tighter">{video.owner?.username}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {video.assignedTo?.length > 0 && (
+                          <div className="flex -space-x-2">
+                            {video.assignedTo.slice(0, 3).map((id, idx) => (
+                              <div key={idx} className="w-5 h-5 rounded-full border-2 border-white bg-indigo-100 flex items-center justify-center text-[8px] font-black text-indigo-600" title="Assigned">
+                                <Check className="w-2 h-2" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <span className="text-[10px] font-bold text-gray-300">
+                          {new Date(video.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === "users" && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+            <h2 className="text-lg font-bold text-gray-900">Team Management</h2>
+            <span className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold">Organization Pool: {tenantUsers.length}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-gray-50 text-[10px] uppercase tracking-widest text-gray-400 font-black">
+                  <th className="px-6 py-4">User</th>
+                  <th className="px-6 py-4">Role</th>
+                  <th className="px-6 py-4">Email</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {tenantUsers.map((tUser) => (
+                  <tr key={tUser._id} className="hover:bg-gray-50/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-black text-xs">
+                          {tUser.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{tUser.fullName}</p>
+                          <p className="text-xs text-gray-400">@{tUser.username}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter ${
+                        tUser.role === 'Admin' ? 'bg-indigo-100 text-indigo-700' : 
+                        tUser.role === 'Editor' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {tUser.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <Mail className="w-3 h-3" />
+                        {tUser.email}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 uppercase">
+                        <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                        Verified
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="text-gray-400 hover:text-rose-500 transition-colors p-2 rounded-lg hover:bg-rose-50">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* Upload Modal Enforcement */}
+      {activeTab === "settings" && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-6">
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Shield className="w-5 h-5 text-indigo-600" />
+                Organization Overview
+              </h2>
+              
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <p className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-1">Total Users</p>
+                    <p className="text-3xl font-black text-indigo-900">{tenantUsers.length}</p>
+                  </div>
+                  <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                    <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-1">Total Videos</p>
+                    <p className="text-3xl font-black text-emerald-900">{videos.length}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Cpu className="w-5 h-5 text-indigo-600" />
+                Pipeline Health
+              </h2>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 border border-gray-100 rounded-xl">
+                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Safe Content</p>
+                  <p className="text-lg font-bold text-emerald-600">{videos.filter(v => v.status === 'safe').length}</p>
+                </div>
+                <div className="p-4 border border-gray-100 rounded-xl">
+                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Flagged Content</p>
+                  <p className="text-lg font-bold text-rose-600">{videos.filter(v => v.status === 'flagged').length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="bg-indigo-600 p-6 rounded-2xl text-white shadow-xl shadow-indigo-100">
+              <Globe className="w-8 h-8 mb-4 opacity-50" />
+              <h3 className="text-lg font-bold mb-2 text-indigo-100">Tenant Info</h3>
+              <p className="text-2xl font-black mb-4 uppercase tracking-tighter truncate" title={user.tenantId}>{user.tenantId}</p>
+              <div className="space-y-2 text-sm text-indigo-200 font-medium">
+                <div className="flex justify-between"><span>Admin:</span><span>{user.username}</span></div>
+                <div className="flex justify-between"><span>Status:</span><span className="text-emerald-300">Operational</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {user.role !== "Viewer" && (
         <UploadModal 
           isOpen={isUploadModalOpen} 

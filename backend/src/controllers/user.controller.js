@@ -180,6 +180,15 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, user, "Current user fetched"));
 });
 
+// Admin Only: Get all users within the same tenant
+const getAllTenantUsers = asyncHandler(async (req, res) => {
+    const users = await User.find({ tenantId: req.user.tenantId })
+        .select("-password -refreshToken")
+        .sort({ createdAt: -1 });
+    
+    return res.status(200).json(new ApiResponse(200, users, "Tenant users fetched successfully"));
+});
+
 export {
     register,
     login,
@@ -188,4 +197,5 @@ export {
     changeCurrentPassword,
     updateUserDetail,
     getCurrentUser,
+    getAllTenantUsers
 };
