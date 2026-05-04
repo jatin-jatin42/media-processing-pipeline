@@ -134,6 +134,7 @@ Reviewers can use these pre-seeded accounts to verify the multi-tenant and role-
 
 | Organization | Role | Email | Password | UI Access |
 | :--- | :--- | :--- | :--- | :--- |
+| **Streamit Org** | Admin | `admin@streamit.com` | *(Omitted for security)* | Full System Access |
 | **Streamit Org** | Editor | `editor@streamit.com` | `Editor@1234` | Only own uploads |
 | **Streamit Org** | Viewer | `viewer@streamit.com` | `Viewer@1234` | Read-only (No Upload) |
 | **Other Org** | Editor | `other@demo.com` | `Other@1234` | Isolated from Streamit Org |
