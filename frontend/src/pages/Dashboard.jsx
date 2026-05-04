@@ -19,6 +19,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("videos"); // "videos", "users", "settings"
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [assigningVideoId, setAssigningVideoId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // "all", "safe", "flagged", "processing"
 
   const fetchVideos = async () => {
     try {
@@ -100,6 +102,26 @@ export default function Dashboard() {
       fetchTenantUsers();
     } catch (err) {
       alert("Failed to change role: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDeleteVideo = async (videoId) => {
+    if (!window.confirm("Are you sure you want to delete this video? This action cannot be undone.")) return;
+    try {
+      await api.delete(`/videos/${videoId}`);
+      setVideos(prev => prev.filter(v => v._id !== videoId));
+    } catch (err) {
+      alert("Failed to delete video: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleToggleStatus = async (videoId, currentStatus) => {
+    const newStatus = currentStatus === "flagged" ? "safe" : "flagged";
+    try {
+      await api.patch(`/videos/${videoId}`, { status: newStatus });
+      setVideos(prev => prev.map(v => v._id === videoId ? { ...v, status: newStatus } : v));
+    } catch (err) {
+      alert("Failed to update status: " + (err.response?.data?.message || err.message));
     }
   };
 
@@ -190,16 +212,45 @@ export default function Dashboard() {
 
       {activeTab === "videos" && (
         <>
-          {videos.length === 0 ? (
+          {/* Filtering & Management Toolbar */}
+          <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
+            <div className="flex-1 flex items-center gap-3">
+              <input 
+                type="text" 
+                placeholder="Search videos by title..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:max-w-xs px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+              <select 
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              >
+                <option value="all">All Statuses</option>
+                <option value="safe">Safe Only</option>
+                <option value="flagged">Flagged Only</option>
+                <option value="processing">Processing Only</option>
+              </select>
+            </div>
+          </div>
+
+          {videos.filter(v => {
+            const matchesSearch = v.title.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesStatus = statusFilter === "all" || v.status === statusFilter;
+            return matchesSearch && matchesStatus;
+          }).length === 0 ? (
             <div className="bg-white rounded-3xl border-2 border-dashed border-gray-200 p-20 text-center">
               <div className="w-20 h-20 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-400">
                 <ImageIcon className="w-10 h-10" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">No videos yet</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No videos found</h3>
               <p className="text-gray-500 mb-8 max-w-sm mx-auto font-medium">
-                {user.role === 'Viewer' ? 'Assigned media will appear here for read-only access.' : 'Start the pipeline by uploading your first organizational media.'}
+                {videos.length === 0 
+                  ? (user.role === 'Viewer' ? 'Assigned media will appear here for read-only access.' : 'Start the pipeline by uploading your first organizational media.')
+                  : 'No videos match your current search and filter criteria.'}
               </p>
-              {user.role !== "Viewer" && (
+              {user.role !== "Viewer" && videos.length === 0 && (
                 <button onClick={() => setIsUploadModalOpen(true)} className="text-indigo-600 font-bold hover:text-indigo-800 transition-colors">
                   Upload now →
                 </button>
@@ -207,8 +258,12 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {videos.map(video => (
-                <div key={video._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:translate-y-[-4px] transition-all duration-300 group">
+              {videos.filter(v => {
+                const matchesSearch = v.title.toLowerCase().includes(searchQuery.toLowerCase());
+                const matchesStatus = statusFilter === "all" || v.status === statusFilter;
+                return matchesSearch && matchesStatus;
+              }).map(video => (
+                <div key={video._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl hover:translate-y-[-4px] transition-all duration-300 group flex flex-col">
                   <div className="aspect-video bg-gray-900 relative overflow-hidden">
                     {video.thumbnail ? (
                       <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
@@ -239,18 +294,38 @@ export default function Dashboard() {
                     )}
                   </div>
                   
-                  <div className="p-6">
+                  <div className="p-6 flex flex-col flex-1">
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-bold text-gray-900 text-lg line-clamp-1" title={video.title}>{video.title}</h3>
-                      {user.role !== "Viewer" && (
-                        <button 
-                          onClick={() => setAssigningVideoId(assigningVideoId === video._id ? null : video._id)}
-                          className={`px-3 py-1.5 flex items-center gap-1.5 rounded-lg transition-all text-xs font-bold ${assigningVideoId === video._id ? 'bg-indigo-600 text-white shadow-md' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
-                        >
-                          <UserPlus className="w-3.5 h-3.5" />
-                          Assign Access
-                        </button>
-                      )}
+                      <h3 className="font-bold text-gray-900 text-lg line-clamp-1 flex-1 pr-2" title={video.title}>{video.title}</h3>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {user.role !== "Viewer" && (
+                          <button 
+                            onClick={() => setAssigningVideoId(assigningVideoId === video._id ? null : video._id)}
+                            className={`p-1.5 rounded-lg transition-all text-xs font-bold ${assigningVideoId === video._id ? 'bg-indigo-600 text-white shadow-md' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
+                            title="Manage Access"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                          </button>
+                        )}
+                        {(user.role === "Admin" || (user.role === "Editor" && video.owner?._id === user._id)) && (
+                          <>
+                            <button 
+                              onClick={() => handleToggleStatus(video._id, video.status)}
+                              className={`p-1.5 rounded-lg transition-all ${video.status === 'flagged' ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-rose-50 text-rose-600 hover:bg-rose-100'}`}
+                              title={video.status === 'flagged' ? 'Mark as Safe' : 'Manually Flag'}
+                            >
+                              {video.status === 'flagged' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteVideo(video._id)}
+                              className="p-1.5 rounded-lg bg-gray-50 text-gray-400 hover:bg-rose-100 hover:text-rose-600 transition-all"
+                              title="Delete Video"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     
                     <p className="text-sm text-gray-500 line-clamp-2 mb-6 min-h-[40px] leading-relaxed">{video.description || "No description provided."}</p>
@@ -291,7 +366,7 @@ export default function Dashboard() {
                       </div>
                     )}
 
-                    <div className="pt-4 border-t border-gray-50 flex items-center justify-between">
+                    <div className="pt-4 border-t border-gray-50 flex items-center justify-between mt-auto">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 bg-indigo-50 rounded-md flex items-center justify-center text-[10px] font-black text-indigo-600">
                           {video.owner?.username?.charAt(0).toUpperCase()}
