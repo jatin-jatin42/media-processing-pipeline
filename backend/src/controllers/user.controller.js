@@ -189,6 +189,59 @@ const getAllTenantUsers = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, users, "Tenant users fetched successfully"));
 });
 
+// Admin Only: Change a user's role
+const changeUserRole = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    if (!userId || !role) {
+        throw new ApiError(400, "User ID and Role are required");
+    }
+
+    if (!["Viewer", "Editor", "Admin"].includes(role)) {
+        throw new ApiError(400, "Invalid role specified");
+    }
+
+    // Security: Admins cannot promote others to Admin level
+    if (role === "Admin") {
+        throw new ApiError(403, "You cannot promote users to the Admin role");
+    }
+
+    const userToUpdate = await User.findById(userId);
+    if (!userToUpdate) throw new ApiError(404, "User not found");
+
+    if (userToUpdate.tenantId !== req.user.tenantId) {
+        throw new ApiError(403, "You can only manage users within your organization");
+    }
+
+    userToUpdate.role = role;
+    await userToUpdate.save({ validateBeforeSave: false });
+
+    return res.status(200).json(new ApiResponse(200, userToUpdate, "User role updated successfully"));
+});
+
+// Admin Only: Delete a user
+const deleteUser = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+
+    if (!userId) throw new ApiError(400, "User ID is required");
+
+    const userToDelete = await User.findById(userId);
+    if (!userToDelete) throw new ApiError(404, "User not found");
+
+    if (userToDelete.tenantId !== req.user.tenantId) {
+        throw new ApiError(403, "You can only manage users within your organization");
+    }
+
+    if (userToDelete._id.toString() === req.user._id.toString()) {
+        throw new ApiError(400, "You cannot delete your own admin account");
+    }
+
+    await User.findByIdAndDelete(userId);
+
+    return res.status(200).json(new ApiResponse(200, {}, "User deleted successfully"));
+});
+
 export {
     register,
     login,
@@ -197,5 +250,7 @@ export {
     changeCurrentPassword,
     updateUserDetail,
     getCurrentUser,
-    getAllTenantUsers
+    getAllTenantUsers,
+    changeUserRole,
+    deleteUser
 };

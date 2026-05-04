@@ -84,6 +84,25 @@ export default function Dashboard() {
     }
   };
 
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this user?")) return;
+    try {
+      await api.delete(`/users/${userId}`);
+      fetchTenantUsers();
+    } catch (err) {
+      alert("Failed to delete user: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleChangeRole = async (userId, newRole) => {
+    try {
+      await api.patch(`/users/${userId}/role`, { role: newRole });
+      fetchTenantUsers();
+    } catch (err) {
+      alert("Failed to change role: " + (err.response?.data?.message || err.message));
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch(status) {
       case "safe":
@@ -334,12 +353,23 @@ export default function Dashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter ${
-                        tUser.role === 'Admin' ? 'bg-indigo-100 text-indigo-700' : 
-                        tUser.role === 'Editor' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {tUser.role}
-                      </span>
+                      {user._id === tUser._id ? (
+                        <span className="px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter bg-indigo-100 text-indigo-700">
+                          {tUser.role} (You)
+                        </span>
+                      ) : (
+                        <select 
+                          value={tUser.role}
+                          onChange={(e) => handleChangeRole(tUser._id, e.target.value)}
+                          className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter outline-none cursor-pointer ${
+                            tUser.role === 'Admin' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 
+                            tUser.role === 'Editor' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-700 border-gray-200'
+                          } border`}
+                        >
+                          <option value="Viewer">Viewer</option>
+                          <option value="Editor">Editor</option>
+                        </select>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5 text-xs text-gray-500">
@@ -354,9 +384,15 @@ export default function Dashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-gray-400 hover:text-rose-500 transition-colors p-2 rounded-lg hover:bg-rose-50">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {user._id !== tUser._id && (
+                        <button 
+                          onClick={() => handleDeleteUser(tUser._id)}
+                          className="text-gray-400 hover:text-rose-500 transition-colors p-2 rounded-lg hover:bg-rose-50"
+                          title="Delete User"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -8,6 +8,8 @@ import {
     updateUserDetail,
     getCurrentUser,
     getAllTenantUsers,
+    changeUserRole,
+    deleteUser
 } from "../controllers/user.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { authorizeRoles } from "../middlewares/role.middleware.js";
@@ -30,6 +32,19 @@ router.route("/tenant-users").get(
     verifyJWT,
     authorizeRoles("Admin", "Editor"),
     getAllTenantUsers
+);
+
+// Admin Only User Management
+router.route("/:userId/role").patch(
+    verifyJWT,
+    authorizeRoles("Admin"),
+    changeUserRole
+);
+
+router.route("/:userId").delete(
+    verifyJWT,
+    authorizeRoles("Admin"),
+    deleteUser
 );
 
 export default router;
