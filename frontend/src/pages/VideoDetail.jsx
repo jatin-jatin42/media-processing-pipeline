@@ -64,9 +64,8 @@ export default function VideoDetail() {
                 className="w-full h-full"
                 controls 
                 autoPlay
-                crossOrigin="use-credentials"
                 poster={video.thumbnail}
-                src={`${import.meta.env.VITE_API_URL || "/api/v1"}/videos/stream/${video._id}`}
+                src={`${import.meta.env.VITE_API_URL || "/api/v1"}/videos/stream/${video._id}?token=${localStorage.getItem("accessToken") || ""}`}
               >
                 Your browser does not support the video tag.
               </video>
