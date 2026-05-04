@@ -8,6 +8,7 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
   const [videoFile, setVideoFile] = useState(null);
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState("");
 
   if (!isOpen) return null;
@@ -32,7 +33,11 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
 
     try {
       const res = await api.post("/videos", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        }
       });
       onUploadSuccess(res.data.data);
       onClose();
@@ -41,10 +46,12 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
       setDescription("");
       setVideoFile(null);
       setThumbnailFile(null);
+      setUploadProgress(0);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to upload video.");
     } finally {
       setLoading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -111,11 +118,29 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
             />
           </div>
 
+          {loading && uploadProgress > 0 && (
+            <div className="pt-2 pb-4">
+              <div className="flex justify-between text-xs font-bold text-gray-500 mb-1.5">
+                <span>Uploading to Cloudinary...</span>
+                <span className="text-indigo-600">{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-indigo-50 rounded-full h-2.5 overflow-hidden border border-indigo-100">
+                <div 
+                  className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300 ease-out relative" 
+                  style={{ width: `${uploadProgress}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="pt-4 flex justify-end gap-3">
             <button 
               type="button" 
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              disabled={loading}
+              className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
@@ -127,7 +152,7 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess }) {
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Uploading...
+                  {uploadProgress === 100 ? "Processing..." : "Uploading..."}
                 </>
               ) : "Upload"}
             </button>
